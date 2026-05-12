@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CalimIA — Tu guía inteligente de Cali</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script>
+// Load Leaflet dynamically and track when ready
+window._leafletReady = false;
+function _loadLeaflet(){
+  var s=document.createElement('script');
+  s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+  s.onload=function(){ window._leafletReady=true; if(window._pendingMapInit) window._pendingMapInit(); };
+  document.head.appendChild(s);
+}
+_loadLeaflet();
+</script>
+<style>
+  :root{
+    --gold:#E8B84B;      /* Dorado del logo */
+    --green:#1B3A2D;     /* Verde oscuro del logo */
+    --dark:#142B20;      /* Verde muy oscuro fondo */
+    --cream:#F5F0E8;     /* Crema del texto "Calim" */
+    --text:#1a1a1a;
+    --muted:#6b7280;
+    --border:#e5e7eb;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--cream);min-height:100vh;overflow-x:hidden;}
+  .screen{display:none;min-height:100vh;}
+  .screen.active{display:flex;flex-direction:column;}
+  #screen-onboarding{background:#142B20;background-image:radial-gradient(ellipse at 20% 50%,rgba(27,58,45,.8) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(232,184,75,.12) 0%,transparent 50%);align-items:center;justify-content:center;padding:2rem 1.5rem;}
+  .onboarding-box{max-width:480px;width:100%;}
+  .logo{font-family:'Fraunces',serif;font-size:3rem;font-weight:900;letter-spacing:-2px;margin-bottom:4px;}
+  .logo span{color:var(--gold);}
+  .logo-sub{font-size:13px;color:rgba(245,240,232,.5);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2.5rem;}
+  .step{display:none;}.step.active{display:block;}
+  .step-title{font-family:'Fraunces',serif;font-size:1.6rem;font-weight:700;margin-bottom:.5rem;line-height:1.2;}
+  .step-sub{font-size:14px;color:rgba(245,240,232,.6);margin-bottom:1.5rem;}
+  .form-group{margin-bottom:1rem;}
+  .form-group label{display:block;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:rgba(245,240,232,.5);margin-bottom:6px;}
+  .form-group input{width:100%;padding:12px 14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:var(--cream);font-family:'DM Sans',sans-serif;font-size:15px;outline:none;transition:border-color .2s;}
+  .form-group input::placeholder{color:rgba(245,240,232,.3);}
+  .form-group input:focus{border-color:var(--gold);}
+  .lang-toggle{display:flex;gap:8px;margin-bottom:1.5rem;}
+  .lang-btn{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:transparent;color:var(--cream);cursor:pointer;font-size:14px;transition:all .2s;font-family:'DM Sans',sans-serif;}
+  .lang-btn.active{background:var(--gold);color:var(--dark);border-color:var(--gold);font-weight:500;}
+  .perfil-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.5rem;}
+  .perfil-card{padding:14px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);cursor:pointer;text-align:center;transition:all .2s;}
+  .perfil-card:hover{border-color:rgba(232,184,75,.4);background:rgba(232,184,75,.05);}
+  .perfil-card.selected{border-color:var(--gold);background:rgba(232,184,75,.1);}
+  .perfil-card .emoji{font-size:1.8rem;display:block;margin-bottom:6px;}
+  .perfil-card .perfil-name{font-size:13px;font-weight:500;}
+  .perfil-card .perfil-desc{font-size:11px;color:rgba(245,240,232,.5);margin-top:2px;}
+  .acc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1.5rem;}
+  .acc-card{padding:12px 8px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);cursor:pointer;text-align:center;transition:all .2s;}
+  .acc-card.selected{border-color:var(--gold);background:rgba(232,184,75,.1);}
+  .acc-card .emoji{font-size:1.5rem;display:block;margin-bottom:4px;}
+  .acc-card .acc-name{font-size:11px;font-weight:500;}
+  .btn-next{width:100%;padding:14px;background:var(--gold);color:var(--dark);border:none;border-radius:12px;font-size:16px;font-weight:500;cursor:pointer;transition:opacity .2s;font-family:'DM Sans',sans-serif;}
+  .btn-next:hover{opacity:.9;}.btn-next:disabled{opacity:.4;cursor:not-allowed;}
+  .step-dots{display:flex;gap:6px;margin-bottom:1.5rem;}
+  .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .3s;}
+  .dot.active{width:20px;border-radius:3px;background:var(--gold);}
+  #screen-app{background:#f4f1eb;color:var(--text);flex-direction:column;}
+  .app-header{background:#1B3A2D;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-bottom:1px solid rgba(232,184,75,.2);}
+  .app-logo{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:900;color:var(--cream);letter-spacing:-1px;}
+  .app-logo span{color:var(--gold);}
+  .narrador-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);padding:6px 12px;border-radius:20px;cursor:pointer;}
+  .narrador-name{font-size:12px;color:var(--cream);font-weight:500;}
+  .app-tabs{display:flex;background:#142B20;padding:0 16px 12px;gap:4px;flex-shrink:0;}
+  .app-tab{flex:1;padding:8px 4px;border-radius:8px;border:none;background:transparent;color:rgba(245,240,232,.4);cursor:pointer;font-size:11px;font-family:'DM Sans',sans-serif;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .app-tab .tab-icon{font-size:1.2rem;}
+  .app-tab.active{background:rgba(232,184,75,.15);color:var(--gold);}
+  .app-content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+  .tab-panel{display:none;flex:1;overflow:hidden;flex-direction:column;}
+  .tab-panel.active{display:flex;}
+  #map{flex:1;min-height:0;}
+  .map-filters{display:flex;gap:6px;padding:10px 12px;background:white;overflow-x:auto;flex-shrink:0;}
+  .map-filters::-webkit-scrollbar{display:none;}
+  .filter-chip{white-space:nowrap;padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:white;font-size:12px;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif;}
+  .filter-chip.active{background:var(--dark);color:white;border-color:var(--dark);}
+  #panel-chat{background:#f4f1eb;}
+  .chat-welcome{padding:20px 16px 12px;flex-shrink:0;}
+  .narrador-intro{display:flex;align-items:center;gap:12px;background:white;border-radius:16px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+  .narrador-big-avatar{font-size:2.5rem;width:52px;height:52px;display:flex;align-items:center;justify-content:center;background:var(--cream);border-radius:50%;flex-shrink:0;}
+  .narrador-info .name{font-weight:600;font-size:15px;}
+  .narrador-info .role{font-size:12px;color:var(--muted);}
+  .narrador-info .greeting{font-size:13px;margin-top:4px;color:var(--text);line-height:1.4;}
+  .chat-messages{flex:1;overflow-y:auto;padding:12px 16px;display:flex;flex-direction:column;gap:12px;}
+  .msg{max-width:85%;display:flex;flex-direction:column;gap:4px;}
+  .msg.user{align-self:flex-end;}.msg.bot{align-self:flex-start;}
+  .msg-bubble{padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;}
+  .msg.user .msg-bubble{background:var(--dark);color:var(--cream);border-bottom-right-radius:4px;}
+  .msg.bot .msg-bubble{background:white;color:var(--text);border-bottom-left-radius:4px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+  .msg-time{font-size:10px;color:var(--muted);padding:0 4px;}
+  .msg.user .msg-time{align-self:flex-end;}
+  .msg-speak{background:none;border:none;cursor:pointer;font-size:13px;padding:2px 4px;opacity:.5;margin-left:6px;}
+  .msg-speak:hover{opacity:1;}
+  .chat-typing{display:none;align-self:flex-start;}
+  .chat-typing .msg-bubble{background:white;display:flex;gap:4px;align-items:center;padding:12px 16px;}
+  .typing-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:bounce 1.2s infinite;}
+  .typing-dot:nth-child(2){animation-delay:.2s;}.typing-dot:nth-child(3){animation-delay:.4s;}
+  @keyframes bounce{0%,80%,100%{transform:scale(.7);opacity:.5}40%{transform:scale(1);opacity:1}}
+  .chat-input-area{padding:12px 16px;background:white;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;}
+  .chat-input{flex:1;padding:10px 14px;border-radius:24px;border:1.5px solid var(--border);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;resize:none;max-height:80px;background:#f9f9f9;}
+  .chat-input:focus{border-color:var(--gold);background:white;}
+  .chat-send{width:40px;height:40px;border-radius:50%;background:var(--gold);border:none;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .1s;}
+  .chat-send:active{transform:scale(.92);}
+  .quick-questions{display:flex;gap:6px;padding:8px 16px;overflow-x:auto;flex-shrink:0;background:white;border-top:1px solid var(--border);}
+  .quick-questions::-webkit-scrollbar{display:none;}
+  .quick-q{white-space:nowrap;padding:6px 12px;border-radius:16px;border:1.5px solid var(--border);background:white;font-size:12px;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif;}
+  .quick-q:hover{border-color:var(--gold);background:rgba(232,184,75,.08);}
+  #panel-explore{overflow-y:auto;padding:16px;gap:12px;flex-direction:column;}
+  .explore-card{background:white;border-radius:16px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;transition:transform .15s;}
+  .explore-card:hover{transform:translateY(-2px);}
+  .explore-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
+  .explore-card-name{font-weight:600;font-size:15px;flex:1;padding-right:8px;}
+  .explore-card-badge{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:500;white-space:nowrap;}
+  .explore-card-desc{font-size:13px;color:var(--muted);line-height:1.5;}
+  .explore-card-meta{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .meta-tag{font-size:11px;padding:3px 8px;background:#f0f0f0;border-radius:8px;color:var(--muted);}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:flex-end;}
+  .modal-overlay.open{display:flex;}
+  .modal-sheet{background:white;border-radius:20px 20px 0 0;padding:20px 20px 32px;max-height:80vh;overflow-y:auto;width:100%;}
+  .modal-handle{width:36px;height:4px;background:#e0e0e0;border-radius:2px;margin:0 auto 16px;}
+  .modal-narrador{display:flex;align-items:flex-start;gap:10px;background:var(--cream);border-radius:12px;padding:12px;margin-bottom:16px;}
+  .modal-narrador-text{font-size:13px;line-height:1.5;font-style:italic;color:#444;flex:1;}
+  .modal-title{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:700;margin-bottom:4px;}
+  .modal-group{font-size:12px;color:var(--muted);margin-bottom:12px;}
+  .modal-desc{font-size:14px;line-height:1.6;color:#333;margin-bottom:16px;}
+  .modal-speak-btn{width:100%;padding:12px;background:#f0f0f0;color:var(--text);border:none;border-radius:12px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;}
+  .modal-ask-btn{width:100%;padding:12px;background:var(--dark);color:var(--cream);border:none;border-radius:12px;font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+  #screen-loading{align-items:center;justify-content:center;background:#142B20;}
+  .loading-logo{font-family:'Fraunces',serif;font-size:4rem;font-weight:900;color:var(--cream);letter-spacing:-3px;margin-bottom:8px;}
+  .loading-logo span{color:var(--gold);}
+  .loading-bar{width:120px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;}
+  .loading-fill{height:100%;background:var(--gold);border-radius:2px;animation:load 2s ease forwards;}
+  @keyframes load{0%{width:0}100%{width:100%}}
+  .p-rumbera{background:#FEE2E2;color:#991B1B;}.p-historica{background:#FEF3C7;color:#92400E;}
+  .p-biodiversa{background:#D1FAE5;color:#065F46;}.p-gastronomica{background:#FFEDD5;color:#9A3412;}
+  .p-deportiva{background:#E0F2FE;color:#075985;}.p-bienestar{background:#F3E8FF;color:#6B21A8;}
+  body.low-vision .msg-bubble{font-size:16px;line-height:1.8;}
+  body.low-vision .modal-desc{font-size:16px;}
+  body.low-vision .explore-card-desc{font-size:14px;}
+</style>
+</head>
+<body>
+
+<div id="screen-loading" class="screen active">
+  <div style="text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px">
+    <div style="width:140px;height:140px;border-radius:50%;background:#1B3A2D;border:3px solid #E8B84B;display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(232,184,75,.2)">
+      <div style="text-align:center">
+        <div style="margin-bottom:4px"><svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z" fill="#E8B84B"/>
+  <circle cx="14" cy="14" r="7" fill="#1B3A2D"/>
+  <text x="14" y="18" text-anchor="middle" fill="#E8B84B" font-size="9" font-weight="700" font-family="serif">C</text>
+</svg></div>
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:900;color:#F5F0E8;letter-spacing:-1px">Calim<span style="color:#E8B84B">IA</span></div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:rgba(245,240,232,.5);letter-spacing:.15em;text-transform:uppercase">Tu guía de Cali</div>
+    <div class="loading-bar"><div class="loading-fill"></div></div>
+  </div>
+</div>
+
+<div id="screen-onboarding" class="screen">
+  <div class="onboarding-box">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <div style="width:56px;height:56px;border-radius:50%;background:#1B3A2D;border:2px solid #E8B84B;display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="28" height="36" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z" fill="#E8B84B"/>
+  <circle cx="14" cy="14" r="7" fill="#1B3A2D"/>
+  <text x="14" y="18" text-anchor="middle" fill="#E8B84B" font-size="9" font-weight="700" font-family="serif">C</text>
+</svg></div>
+      <div>
+        <div class="logo">Calim<span>IA</span></div>
+        <div class="logo-sub" style="margin-bottom:0">Tu guía de Cali</div>
+      </div>
+    </div>
+    <div style="margin-bottom:2rem"></div>
+    <div class="step-dots">
+      <div class="dot active" id="dot-0"></div><div class="dot" id="dot-1"></div>
+      <div class="dot" id="dot-2"></div><div class="dot" id="dot-3"></div>
+    </div>
+    <div class="step active" id="step-0">
+      <div class="step-title">¡Bienvenido a Cali!</div>
+      <div class="step-sub">Cuéntanos sobre ti para personalizar tu experiencia.</div>
+      <div class="form-group">
+        <label>Tu nombre</label>
+        <input type="text" id="inp-nombre" placeholder="¿Cómo te llamas?"/>
+      </div>
+      <div class="form-group">
+        <label>¿De dónde vienes?</label>
+        <input type="text" id="inp-pais" placeholder="Ej: Bogotá, México, España, USA..."/>
+      </div>
+      <button class="btn-next" onclick="goStep1()">Continuar →</button>
+    </div>
+    <div class="step" id="step-1">
+      <div class="step-title" id="s1-title">¿En qué idioma preferís?</div>
+      <div class="step-sub" id="s1-sub">CalimIA puede hablarte en español o inglés.</div>
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="lang-es" onclick="setLang('es')">🇨🇴 Español</button>
+        <button class="lang-btn" id="lang-en" onclick="setLang('en')">🇺🇸 English</button>
+      </div>
+      <button class="btn-next" onclick="nextStep(2)">Continuar →</button>
+    </div>
+    <div class="step" id="step-2">
+      <div class="step-title" id="s2-title">¿Qué Cali querés vivir?</div>
+      <div class="step-sub" id="s2-sub">Elige tu experiencia principal.</div>
+      <div class="perfil-grid">
+        <div class="perfil-card" onclick="setPerfil('rumbera',this)"><span class="emoji">💃</span><div class="perfil-name" id="p1n">Cali Rumbera</div><div class="perfil-desc" id="p1d">Salsa, eventos, vida nocturna</div></div>
+        <div class="perfil-card" onclick="setPerfil('historica',this)"><span class="emoji">🏛️</span><div class="perfil-name" id="p2n">Cali Histórica</div><div class="perfil-desc" id="p2d">Patrimonio, arte, arquitectura</div></div>
+        <div class="perfil-card" onclick="setPerfil('biodiversa',this)"><span class="emoji">🌿</span><div class="perfil-name" id="p3n">Cali Biodiversa</div><div class="perfil-desc" id="p3d">Naturaleza, aves, ríos</div></div>
+        <div class="perfil-card" onclick="setPerfil('gastronomica',this)"><span class="emoji">🍽️</span><div class="perfil-name" id="p4n">Cali Gastronómica</div><div class="perfil-desc" id="p4d">Sabores, mercados, tradición</div></div>
+        <div class="perfil-card" onclick="setPerfil('deportiva',this)"><span class="emoji">⚽</span><div class="perfil-name" id="p5n">Cali Deportiva</div><div class="perfil-desc" id="p5d">Estadios, atletismo, eventos</div></div>
+        <div class="perfil-card" onclick="setPerfil('bienestar',this)"><span class="emoji">🏥</span><div class="perfil-name" id="p6n">Cali Bienestar</div><div class="perfil-desc" id="p6d">Salud, descanso, recuperación</div></div>
+      </div>
+      <button class="btn-next" id="btn-2" disabled onclick="nextStep(3)">Continuar →</button>
+    </div>
+    <div class="step" id="step-3">
+      <div class="step-title" id="s3-title">¿Alguna preferencia de accesibilidad?</div>
+      <div class="step-sub" id="s3-sub">CalimIA se adapta para que todos vivan Cali.</div>
+      <div class="acc-grid">
+        <div class="acc-card selected" onclick="setAcc('ninguna',this)"><span class="emoji">👁️</span><div class="acc-name" id="a1n">Sin limitación</div></div>
+        <div class="acc-card" onclick="setAcc('baja-vision',this)"><span class="emoji">🔊</span><div class="acc-name" id="a2n">Baja visión</div></div>
+        <div class="acc-card" onclick="setAcc('sordo',this)"><span class="emoji">👁️‍🗨️</span><div class="acc-name" id="a3n">Sordo</div></div>
+      </div>
+      <button class="btn-next" id="btn-launch" onclick="launchApp()">¡Empezar a explorar! 🗺️</button>
+    </div>
+  </div>
+</div>
+
+<div id="screen-app" class="screen">
+  <div class="app-header">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:32px;height:32px;border-radius:50%;background:#1B3A2D;border:1.5px solid #E8B84B;display:flex;align-items:center;justify-content:center"><svg width="18" height="24" viewBox="0 0 28 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z" fill="#E8B84B"/>
+  <circle cx="14" cy="14" r="7" fill="#1B3A2D"/>
+  <text x="14" y="18" text-anchor="middle" fill="#E8B84B" font-size="9" font-weight="700" font-family="serif">C</text>
+</svg></div>
+      <div class="app-logo">Calim<span>IA</span></div>
+    </div>
+    <div class="narrador-badge" onclick="showTab('chat')">
+      <span id="hdr-avatar">💃</span>
+      <span class="narrador-name" id="hdr-name">Don Saoko</span>
+    </div>
+  </div>
+  <div class="app-tabs">
+    <button class="app-tab active" id="tab-mapa" onclick="showTab('mapa')"><span class="tab-icon">🗺️</span><span id="tml">Mapa</span></button>
+    <button class="app-tab" id="tab-chat" onclick="showTab('chat')"><span class="tab-icon">💬</span><span id="tcl">Chat</span></button>
+    <button class="app-tab" id="tab-explore" onclick="showTab('explore')"><span class="tab-icon">✨</span><span id="tel">Explorar</span></button>
+  </div>
+  <div class="app-content">
+    <div class="tab-panel active" id="panel-mapa">
+      <div class="map-filters">
+        <button class="filter-chip" id="chip-all" onclick="filterMap('all',this)">Todos</button>
+        <button class="filter-chip" id="chip-rumbera" onclick="filterMap('rumbera',this)">💃 Rumbera</button>
+        <button class="filter-chip" id="chip-historica" onclick="filterMap('historica',this)">🏛️ Histórica</button>
+        <button class="filter-chip" id="chip-biodiversa" onclick="filterMap('biodiversa',this)">🌿 Biodiversa</button>
+        <button class="filter-chip" id="chip-gastronomica" onclick="filterMap('gastronomica',this)">🍽️ Gastro</button>
+        <button class="filter-chip" id="chip-deportiva" onclick="filterMap('deportiva',this)">⚽ Deportiva</button>
+      </div>
+      <div id="map"></div>
+    </div>
+    <div class="tab-panel" id="panel-chat">
+      <div class="chat-welcome">
+        <div class="narrador-intro">
+          <div class="narrador-big-avatar" id="chat-avatar">💃</div>
+          <div class="narrador-info">
+            <div class="name" id="cnn">Don Saoko</div>
+            <div class="role" id="cnr">Tu guía de la Cali rumbera</div>
+            <div class="greeting" id="cng">Cargando...</div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-typing" id="chat-typing">
+        <div class="msg-bubble"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+      </div>
+      <div class="quick-questions" id="quick-questions"></div>
+      <div class="chat-input-area">
+        <textarea class="chat-input" id="chat-input" rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage()}"></textarea>
+        <button class="chat-send" onclick="sendMessage()">➤</button>
+      </div>
+    </div>
+    <div class="tab-panel" id="panel-explore"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal-sheet"><div class="modal-handle"></div><div id="modal-content"></div></div>
+</div>
+
+<script>
+const AT=[
+  {id:1,nombre:"Festival Mundial de la Salsa",name:"World Salsa Festival",d:"El Festival Mundial de Salsa es el evento que le muestra al mundo por qué Cali es la capital de la salsa. Se realiza desde 2001, generalmente en septiembre, con participantes de más de 40 países.",de:"The World Salsa Festival has showcased Cali's salsa supremacy since 2001. Held every September, it brings competitors from over 40 countries to compete in choreography and style.",g:"Festividades y eventos",p:"rumbera",lat:3.4136,lon:-76.5518,sig:"Internacional"},
+  {id:6,nombre:"Feria de Cali",name:"Cali Fair",d:"La Feria de Cali es el evento más grande de la ciudad: cinco días de desfiles de salsa, conciertos, cabalgatas y rumba en diciembre. Reúne más de 1.000.000 de asistentes.",de:"The Cali Fair is the city's biggest event: five days of salsa parades, concerts, horse shows and non-stop parties every December. Over one million people attend.",g:"Festividades y eventos",p:"rumbera",lat:3.4098,lon:-76.5480,sig:"Internacional"},
+  {id:10,nombre:"Festival Petronio Álvarez",name:"Petronio Álvarez Festival",d:"El festival más importante de música del Pacífico en América Latina. Nació en 1997. Reúne más de 350.000 visitantes en 6 días de marimba, chirimía, viche y gastronomía afro.",de:"The most important Pacific music festival in Latin America. Founded in 1997, it draws over 350,000 visitors across 6 days of marimba, chirimía, viche and Afro-Colombian cuisine.",g:"Festividades y eventos",p:"rumbera",lat:3.4241,lon:-76.5384,sig:"Internacional"},
+  {id:54,nombre:"Plazoleta Jairo Varela",name:"Jairo Varela Square",d:"El corazón de la identidad salsera de Cali. Lleva el nombre del fundador del Grupo Niche. Punto de encuentro de músicos, bailarines y amantes de la salsa.",de:"The heart of Cali's salsa identity. Named after the founder of Grupo Niche. The gathering point for musicians, dancers and salsa lovers from around the world.",g:"Espacio público",p:"rumbera",lat:3.4549,lon:-76.5347,sig:"Local"},
+  {id:68,nombre:"Museo de la Salsa",name:"Salsa Museum",d:"Abrió en 2016 con 50 años de fotografías de artistas salseros. Expone memorabilia, discos, vestuarios e instrumentos de la historia de la salsa caleña.",de:"Opened in 2016 with 50 years of salsa photography. It displays memorabilia, records, costumes and instruments from the history of Cali salsa.",g:"Museo",p:"rumbera",lat:3.4484,lon:-76.5187,sig:"Local"},
+  {id:7,nombre:"Iglesia de la Ermita",name:"La Ermita Church",d:"Símbolo de Cali construida en el siglo XVII. Su estilo neogótico y ubicación junto al Río Cali la convierte en la postal más icónica de la ciudad.",de:"Cali's most iconic symbol, built in the 17th century. Its neo-Gothic style and location beside the Cali River makes it the most photographed image of the city.",g:"Arquitectura religiosa",p:"historica",lat:3.4540,lon:-76.5320,sig:"Internacional"},
+  {id:3,nombre:"Catedral Metropolitana de San Pedro",name:"San Pedro Metropolitan Cathedral",d:"Sede de la Arquidiócesis de Cali, declarada Patrimonio Arquitectónico Nacional. Su construcción inició en 1772.",de:"Seat of the Archdiocese of Cali, declared National Architectural Heritage. Construction began in 1772 and took over a century to complete.",g:"Arquitectura religiosa",p:"historica",lat:3.4512,lon:-76.5326,sig:"Internacional"},
+  {id:14,nombre:"Plaza Caycedo",name:"Caycedo Square",d:"Corazón histórico de Cali. Aquí se proclamó la Independencia de Cali en 1810. Rodeada por la Catedral, el Palacio Nacional y el Edificio Otero.",de:"The historic heart of Cali. Independence was proclaimed here in 1810. Surrounded by the Cathedral, the National Palace and the Otero Building.",g:"Espacio público",p:"historica",lat:3.4519,lon:-76.5325,sig:"Internacional"},
+  {id:2,nombre:"Monumento Cristo Rey",name:"Cristo Rey Monument",d:"A 1.474 metros de altura, el Cristo Rey tiene 26 metros y más de 400 toneladas. Fue construido en 1953. Desde allí se ve toda la ciudad.",de:"At 1,474 meters altitude, Cristo Rey stands 26 meters tall and weighs over 400 tons. Built in 1953. From its base you can see the entire city of Cali.",g:"Monumento",p:"historica",lat:3.4359,lon:-76.5649,sig:"Internacional"},
+  {id:13,nombre:"Cerro de las Tres Cruces",name:"Three Crosses Hill",d:"A 1.480 metros. En Semana Santa entre 400.000 y 500.000 personas suben al cerro, una de las peregrinaciones más grandes de Colombia.",de:"At 1,480 meters altitude. During Holy Week, between 400,000 and 500,000 people climb this hill — one of the largest pilgrimages in Colombia.",g:"Monumento",p:"historica",lat:3.4574,lon:-76.5521,sig:"Internacional"},
+  {id:4,nombre:"Complejo Religioso La Merced",name:"La Merced Religious Complex",d:"El complejo más antiguo de Cali, siglos XVII-XIX. Incluye tres capillas coloniales y el Museo Arqueológico MUSA con 615 piezas de orfebrería indígena.",de:"Cali's oldest complex, built between the 17th and 19th centuries. It includes three colonial chapels and the MUSA Archaeological Museum with 615 pieces of indigenous goldwork.",g:"Arquitectura religiosa",p:"historica",lat:3.4506,lon:-76.5363,sig:"Internacional"},
+  {id:8,nombre:"Capilla de San Antonio",name:"San Antonio Chapel",d:"Construida en 1746, símbolo del barrio más bohemio de Cali. Desde la colina hay una de las mejores vistas de la ciudad.",de:"Built in 1746, symbol of Cali's most bohemian neighborhood. From the hill surrounding it, you get one of the best panoramic views of the entire city.",g:"Arquitectura religiosa",p:"historica",lat:3.4476,lon:-76.5417,sig:"Internacional"},
+  {id:27,nombre:"El Gato de Tejada",name:"Tejada's Cat",d:"Regalo del artista Hernando Tejada a la ciudad en 1996. El gato de bronce de 3.5 metros junto al Río Cali es el punto de encuentro más querido.",de:"A gift from artist Hernando Tejada to the city in 1996. The 3.5-meter bronze cat beside the Cali River is the city's most beloved meeting point.",g:"Escultura",p:"historica",lat:3.4513,lon:-76.5430,sig:"Nacional"},
+  {id:5,nombre:"Museo La Tertulia",name:"La Tertulia Museum",d:"Fundado en 1956, el museo de arte más importante del suroccidente colombiano. Recibe más de 80.000 visitantes al año. Incluye cinemateca.",de:"Founded in 1956, the most important art museum in southwestern Colombia. Receives over 80,000 visitors per year and includes a cinematheque.",g:"Museo",p:"historica",lat:3.4502,lon:-76.5449,sig:"Internacional"},
+  {id:46,nombre:"Bulevar del Río",name:"River Boulevard",d:"8 cuadras peatonales sobre la ribera del Río Cali. 12.000 m² con ciclocarril, bancas y lámparas. El paseo urbano más moderno de la ciudad.",de:"8 pedestrian blocks along the Cali River. 12,000 square meters with bike lanes, benches and street lamps. The city's most modern urban promenade.",g:"Espacio público",p:"historica",lat:3.4536,lon:-76.5328,sig:"Local"},
+  {id:11,nombre:"Ecoparque Río Pance",name:"Río Pance Ecopark",d:"59.9 hectáreas alrededor de la cuenca baja del Río Pance. Sendero de 4.4 km, gimnasio al aire libre. El destino natural más visitado de Cali.",de:"59.9 hectares around the lower Pance River basin. A 4.4 km trail and outdoor gym. The most visited natural destination in Cali on weekends.",g:"Ecoparque",p:"biodiversa",lat:3.3475,lon:-76.5679,sig:"Nacional"},
+  {id:86,nombre:"Río Pance",name:"Pance River",d:"Nace en los Farallones a 4.000 metros. 25 km de aguas frías y cristalinas. Charcos, cascadas y senderos. Plan favorito de los caleños los fines de semana.",de:"Originates in the Farallones at 4,000 meters altitude. 25 km of cold, crystal-clear waters with natural pools and waterfalls. Cali's favorite weekend escape.",g:"Río",p:"biodiversa",lat:3.3600,lon:-76.5800,sig:"Local"},
+  {id:15,nombre:"Parque Natural Los Farallones",name:"Los Farallones National Park",d:"196.429 hectáreas. Nacen más de 30 ríos que abastecen a Cali. Hogar de 540 especies de aves. El área protegida más grande del Valle del Cauca.",de:"196,429 hectares of biodiversity. Over 30 rivers originate here supplying water to Cali. Home to 540 bird species. The largest protected area in Valle del Cauca.",g:"Parque Nacional",p:"biodiversa",lat:3.2908,lon:-76.7556,sig:"Nacional"},
+  {id:101,nombre:"Río Cali",name:"Cali River",d:"El río que cruza la ciudad de oeste a este. Nace en los Farallones. Su ribera fue restaurada con el Bulevar del Río. Eje ambiental urbano de Cali.",de:"The river that crosses the city from west to east. Born in the Farallones mountains. Its banks were restored with the River Boulevard. Cali's urban environmental axis.",g:"Río",p:"biodiversa",lat:3.4513,lon:-76.5440,sig:"Local"},
+  {id:102,nombre:"Río Aguacatal",name:"Aguacatal River",d:"Afluente del Río Cali que baja desde el Cerro de las Tres Cruces. Corredor ecológico urbano con senderos entre los cerros y la ciudad.",de:"Tributary of the Cali River descending from Three Crosses Hill. An urban ecological corridor with trails connecting the hills and the city.",g:"Río",p:"biodiversa",lat:3.4580,lon:-76.5530,sig:"Local"},
+  {id:104,nombre:"Cerro Las Tres Cruces — Ruta Natural",name:"Three Crosses Hill — Nature Trail",d:"Reserva forestal urbana con 80 especies de aves y flora endémica. Uno de los mejores miradores naturales de Cali.",de:"Urban forest reserve with 80 bird species and endemic flora. One of the best natural viewpoints overlooking all of Cali.",g:"Cerro",p:"biodiversa",lat:3.4678,lon:-76.5542,sig:"Regional"},
+  {id:9,nombre:"Zoológico de Cali",name:"Cali Zoo",d:"25 hectáreas con 2.500 animales. Sede del Colombia BirdFair, el evento de avistamiento de aves más importante del país cada febrero.",de:"25 hectares with 2,500 animals. Home of the Colombia BirdFair, the country's most important birdwatching event held every February.",g:"Zoológico",p:"biodiversa",lat:3.4481,lon:-76.5568,sig:"Internacional"},
+  {id:105,nombre:"Reserva Bichacué Yath",name:"Bichacué Yath Reserve",d:"Nombre Páez: 'Santuario de Aves'. 3.000 m² de musgo en el Km 18. Colibríes, talleres de conservación y recorridos guiados.",de:"Páez name meaning 'Bird Sanctuary'. 3,000 m² of moss forest at Km 18. Hummingbirds, conservation workshops and guided tours.",g:"Reserva natural",p:"biodiversa",lat:3.4552,lon:-76.6350,sig:"Local"},
+  {id:108,nombre:"Sendero Km 18",name:"Km 18 Trail",d:"Punto de partida de los mejores senderos de avistamiento. A 18 km del centro. Guías llevan a ver tucanes, tangaras y el gallito de roca en su hábitat.",de:"Starting point for the best birdwatching trails, 18 km from the city center. Guides take you to see toucans, tanagers and the Cock-of-the-Rock in their natural habitat.",g:"Sendero",p:"biodiversa",lat:3.4500,lon:-76.6200,sig:"Nacional"},
+  {id:95,nombre:"Jardín Botánico de Cali",name:"Cali Botanical Garden",d:"14 hectáreas de bosque tropical seco a orillas del Río Cali. Más de 1.000 especies de flora. Entrada gratuita.",de:"14 hectares of tropical dry forest along the Cali River. Over 1,000 plant species. Free admission.",g:"Jardín botánico",p:"biodiversa",lat:3.4490,lon:-76.5690,sig:"Nacional"},
+  {id:107,nombre:"Quebrada Charco Azul",name:"Charco Azul Stream",d:"Quebrada popular en Pance con charcos naturales de aguas frías y cristalinas. Ideal para picnics y caminatas cortas en familia.",de:"Popular stream in Pance with natural cold, crystal-clear pools. Perfect for family picnics and short hikes.",g:"Quebrada",p:"biodiversa",lat:3.3550,lon:-76.5850,sig:"Local"},
+  {id:85,nombre:"Galería Alameda",name:"Alameda Market",d:"El hub gastronómico de Cali. Más de 15.000 personas los fines de semana. Chontaduro, lulo, guanábana, pandebono y los mejores ingredientes del Valle.",de:"Cali's gastronomic hub. Over 15,000 visitors on weekends. Chontaduro, lulo, guanabana, pandebono and the best ingredients from the Valle del Cauca.",g:"Mercado",p:"gastronomica",lat:3.4343,lon:-76.5354,sig:"Local"},
+  {id:109,nombre:"Parque del Perro",name:"Parque del Perro",d:"Más de 40 restaurantes gourmet en el barrio Granada. El epicentro de la vida gastronómica nocturna de Cali los viernes y sábados.",de:"Over 40 gourmet restaurants in the Granada neighborhood. The epicenter of Cali's gastronomic nightlife every Friday and Saturday.",g:"Zona gastronómica",p:"gastronomica",lat:3.4520,lon:-76.5230,sig:"Local"},
+  {id:110,nombre:"Pandebono y Champús",name:"Pandebono and Champús",d:"El pandebono: queso, almidón de yuca y huevo, recién salido del horno. El champús: bebida ancestral de maíz, lulo y panela. Patrimonio Gastronómico de Cali.",de:"Pandebono: cheese, yuca starch and egg, fresh from the oven. Champús: an ancestral drink made from corn, lulo and panela. Both are Cali's Gastronomic Heritage.",g:"Tradición culinaria",p:"gastronomica",lat:3.4519,lon:-76.5325,sig:"Regional"},
+  {id:111,nombre:"Lulada Caleña",name:"Cali Lulada",d:"La bebida símbolo de Cali. Lulo vallecaucano, agua fría y azúcar. Refrescante y ligeramente ácida. Declarada bebida símbolo de la ciudad.",de:"Cali's signature drink. Valle del Cauca lulo fruit, cold water and sugar. Refreshing and slightly tart. Declared the city's official symbolic beverage.",g:"Bebida típica",p:"gastronomica",lat:3.4530,lon:-76.5340,sig:"Nacional"},
+  {id:18,nombre:"Estadio Pascual Guerrero",name:"Pascual Guerrero Stadium",d:"Inaugurado en 1937. Capacidad para 45.000 espectadores. Sede de Deportivo Cali y América de Cali. El punto cero de la pasión deportiva caleña.",de:"Inaugurated in 1937. Capacity for 45,000 spectators. Home of Deportivo Cali and América de Cali. The epicenter of Cali's sporting passion.",g:"Estadio",p:"deportiva",lat:3.4298,lon:-76.5412,sig:"Nacional"},
+  {id:67,nombre:"Unidad Deportiva Jaime Aparicio",name:"Jaime Aparicio Sports Complex",d:"Construida para los Juegos Panamericanos de 1971. Más de 20 escenarios deportivos. Sede de los IX Juegos Mundiales 2013.",de:"Built for the 1971 Pan American Games. Over 20 sports venues. Host of the IX World Games 2013 and many international competitions.",g:"Complejo deportivo",p:"deportiva",lat:3.4284,lon:-76.5401,sig:"Internacional"},
+  {id:114,nombre:"Fundación Valle del Lili",name:"Valle del Lili Foundation",d:"Una de las mejores clínicas de América Latina. Referente en trasplantes, cardiología y oncología. Recibe pacientes de Colombia y el exterior.",de:"One of the best clinics in Latin America. A reference center for transplants, cardiology and oncology. Receives patients from Colombia and abroad.",g:"Clínica",p:"bienestar",lat:3.3620,lon:-76.5320,sig:"Internacional"},
+  {id:115,nombre:"Clínica Imbanaco",name:"Imbanaco Clinic",d:"Líder en turismo médico del suroccidente. Cirugía estética, ortopedia y medicina preventiva. Atención para pacientes internacionales.",de:"Leader in medical tourism in southwestern Colombia. Cosmetic surgery, orthopedics and preventive medicine. Full international patient services.",g:"Clínica",p:"bienestar",lat:3.4100,lon:-76.5500,sig:"Nacional"}
+];
+
+const NR={
+  rumbera:    {n:'Don Saoko',    e:'💃',re:'Tu guía de la Cali rumbera',      en:'Your guide to salsa Cali'},
+  historica:  {n:'El Cronista', e:'🏛️',re:'Memoria viva de la ciudad',        en:'Living memory of the city'},
+  biodiversa: {n:'Doña Selva',  e:'🌿',re:'Guardiana de los Farallones',       en:'Guardian of the Farallones'},
+  gastronomica:{n:'La Señora Fermín',e:'🍽️',re:'Cocinera del alma vallecaucana',en:'Soul of Cali cuisine'},
+  deportiva:  {n:'El Capitán',  e:'⚽',re:'Orgullo deportivo de la sucursal',  en:'Cali sports pride'},
+  bienestar:  {n:'Sofía',       e:'🏥',re:'Tu guía de bienestar y salud',      en:'Your wellness guide'}
+};
+
+const BV={
+  rumbera:    {es:'¡Oís, {N}! Yo soy Don Saoko y te voy a mostrar la Cali que baila. ¿Por dónde arrancamos?',en:"Hey {N}! I'm Don Saoko — welcome to the city that never stops dancing. Where do you want to start?"},
+  historica:  {es:'Bienvenido, {N}. Soy El Cronista. Cali tiene más de 480 años de historia. Hoy vas a ver la ciudad con otros ojos.',en:"Welcome {N}. I'm The Chronicler. Cali has 480 years of history waiting. Let's begin."},
+  biodiversa: {es:'Hola, {N}. Soy Doña Selva. Cali tiene 562 especies de aves registradas. Cada paso aquí es un descubrimiento.',en:"Hello {N}. I'm Doña Selva. Cali has 562 bird species — more than many countries. Every step is a discovery."},
+  gastronomica:{es:'¡Ay, {N}, bienvenido! Soy la Señora Fermín. En Cali no se viene solo a ver, se viene a comer. ¿Tiene hambre?',en:"Welcome {N}! I'm Señora Fermín. In Cali you don't just visit — you eat. Hungry?"},
+  deportiva:  {es:'¡Listo, {N}! Soy El Capitán. Cali es la capital deportiva de Colombia. ¿Arrancamos?',en:"Let's go {N}! I'm El Capitán. Cali is Colombia's sports capital. Ready?"},
+  bienestar:  {es:'Bienvenido a Cali, {N}. Soy Sofía. Estoy aquí para que su estadía sea tranquila y agradable.',en:"Welcome to Cali, {N}. I'm Sofía. I'm here to make your stay comfortable and pleasant."}
+};
+
+const QQ={
+  rumbera:   {es:['¿Dónde bailar salsa hoy?','¿Cuándo es la Feria de Cali?','¿Qué es el Petronio?','¿Cómo es el estilo caleño?'],en:['Where to dance salsa tonight?','When is Feria de Cali?','What is Petronio festival?','What makes Cali salsa unique?']},
+  historica: {es:['¿Qué ver en el centro histórico?','¿Cuántos años tiene La Ermita?','¿Qué es el Barrio San Antonio?','¿Dónde está el Gato de Tejada?'],en:['What to see in the historic center?','How old is La Ermita?','What is Barrio San Antonio?','Where is the Cat of Tejada?']},
+  biodiversa:{es:['¿Cómo llego al Río Pance?','¿Qué aves puedo ver?','¿Qué ríos hay para bañarse?','¿Qué es el Colombia BirdFair?'],en:['How to get to Río Pance?','What birds can I see?','Rivers for swimming?','What is Colombia BirdFair?']},
+  gastronomica:{es:['¿Qué es una lulada?','¿Dónde está la Galería Alameda?','¿Qué es el pandebono?','¿Dónde comer sancocho?'],en:['What is a lulada?','Where is Galería Alameda?','What is pandebono?','Where to eat sancocho?']},
+  deportiva: {es:['¿Cuándo juegan Cali y América?','¿Dónde está el Pascual Guerrero?','¿Hay ciclovía en Cali?','¿Qué eventos deportivos hay?'],en:['When is the next big match?','Where is Pascual Guerrero?','Is there a cycling path?','Upcoming sports events?']},
+  bienestar: {es:['¿Cuáles son las mejores clínicas?','¿Dónde hay zonas tranquilas?','¿Qué restaurantes saludables hay?','¿Cómo moverme seguro?'],en:['What are the best clinics?','Where are the quiet areas?','Healthy restaurant recommendations?','How to get around safely?']}
+};
+
+const FB={
+  rumbera:{
+    es:{salsa:'¡La salsa es el alma de Cali! El estilo caleño se distingue por el trabajo de pies rapidísimo. La Plazoleta Jairo Varela y el Barrio Obrero son los epicentros. ¿Quieres saber dónde bailar esta noche? — Don Saoko',feria:'La Feria de Cali es del 25 al 30 de diciembre. Desfiles de salsa, conciertos masivos y cabalgata. Más de un millón de personas en 5 días. ¡La fiesta más grande de Colombia! — Don Saoko',petronio:'El Festival Petronio Álvarez es en agosto en la Unidad Deportiva Alberto Galindo. 6 días de música del Pacífico, viche, arrechón y 350.000 asistentes. El festival afro más importante de América Latina. — Don Saoko',default:'¡En Cali la rumba nunca para! Para bailar: Plazoleta Jairo Varela o el Barrio Obrero. Para eventos grandes: Petronio (agosto) y Feria de Cali (diciembre). ¿Qué quieres explorar? — Don Saoko'},
+    en:{default:"Cali's nightlife is legendary! For salsa: Plazoleta Jairo Varela and Barrio Obrero. Big events: Petronio Festival (August) and Feria de Cali (December). What would you like to explore? — Don Saoko"}
+  },
+  historica:{
+    es:{ermita:'La Iglesia de la Ermita es el símbolo de Cali. Construida en el siglo XVII, sobrevivió al terremoto de 1787. Su estilo neogótico junto al Río Cali es la imagen más fotografiada de la ciudad. Carrera 1 con Calle 13. — El Cronista',centro:'El centro histórico incluye La Ermita, Plaza Caycedo, La Merced, el Teatro Municipal y el Bulevar del Río. Todo a pie en 6 cuadras de historia colonial y arquitectura republicana. Ideal por la mañana. — El Cronista',default:'Cali tiene 480 años de historia. El centro histórico concentra los principales atractivos: La Ermita, Plaza Caycedo, La Merced y el Bulevar del Río. ¿Te interesa algún período histórico específico? — El Cronista'},
+    en:{default:"Cali has 480 years of history. The historic center has La Ermita, Plaza Caycedo, La Merced and the Río Boulevard — all walkable. What period of history interests you most? — The Chronicler"}
+  },
+  biodiversa:{
+    es:{pance:'El Río Pance nace en los Farallones a 4.000 metros. Sus aguas frías forman charcos y cascadas naturales. Para llegar: bus desde la Terminal o taxi al Ecoparque (Km 12 vía La Vorágine). Los fines de semana es el plan favorito de Cali. — Doña Selva',aves:'Cali tiene 562 especies de aves. Para avistar: el Km 18 (vía Buenaventura), la Reserva Bichacué Yath y el Zoológico (Colombia BirdFair en febrero). Con guía local verás tucanes, tangaras y el Gallito de Roca. — Doña Selva',rios:'Los ríos de Cali son el Pance (ideal para bañarse, con charcos y cascadas), el Cali (cruza la ciudad con el Bulevar del Río) y el Aguacatal (corredor ecológico urbano). Todos nacen en los Farallones. — Doña Selva',default:'Cali está rodeada de naturaleza. El Río Pance, los Farallones, el Km 18 y el Jardín Botánico son los principales destinos. ¿Buscas senderismo, aves, ríos para bañarte o algo más tranquilo? — Doña Selva'},
+    en:{pance:"Río Pance flows from the Farallones at 4,000m altitude. Cold, crystal-clear waters with natural pools and waterfalls. Take a taxi to Ecoparque Río Pance (Km 12). Cali's favorite weekend escape. — Doña Selva",birds:"Cali has 562 registered bird species! Top spots: Km 18 road, Bichacué Yath Reserve, and the Zoo (Colombia BirdFair each February). A local guide will show you toucans, tanagers and the Cock-of-the-Rock. — Doña Selva",default:"Cali is surrounded by incredible nature. Río Pance, Los Farallones, Km 18 and the Botanical Garden are the top spots. Looking for hiking, birdwatching, rivers or something relaxed? — Doña Selva"}
+  },
+  gastronomica:{
+    es:{lulada:'La lulada es la bebida símbolo de Cali: lulo machacado, agua fría y azúcar. Refrescante y ligeramente ácida. La encuentras en cualquier restaurante típico o en la Galería Alameda. — La Señora Fermín',pandebono:'El pandebono es la joya panadera del Valle: queso, almidón de yuca y huevo. Se come caliente, recién salido del horno. En cualquier panadería de barrio desde las 6am. El desayuno del caleño auténtico. — La Señora Fermín',alameda:'La Galería Alameda queda en Carrera 26 con Calle 8. Es el corazón gastronómico de Cali: frutas tropicales, carnes, quesos y chontaduro. Llega antes de las 9am para encontrar todo fresco. — La Señora Fermín',default:'¡En Cali se come muy bien! No te vayas sin probar: lulada, pandebono, sancocho de gallina y aborrajado. La Galería Alameda para ingredientes frescos, el Parque del Perro para restaurantes nocturnos. ¿Qué quieres probar primero? — La Señora Fermín'},
+    en:{default:"Cali's food scene is incredible! Must-try: lulada (cold lulo drink), pandebono (cheese bread), sancocho de gallina (chicken soup) and aborrajado (fried plantain with cheese). Visit Galería Alameda for fresh local ingredients. — Señora Fermín"}
+  },
+  deportiva:{
+    es:{estadio:'El Estadio Pascual Guerrero tiene capacidad para 45.000 personas. Sede de Deportivo Cali (verde) y América de Cali (rojo). El Clásico Caleño es uno de los partidos más apasionados del fútbol colombiano. Calle 5 entre Carreras 34 y 36. — El Capitán',default:'Cali es la capital deportiva de Colombia. El Pascual Guerrero para fútbol, la Unidad Deportiva Jaime Aparicio para eventos mundiales, y la ciclovía los domingos para moverse activo. ¿Qué deporte te interesa? — El Capitán'},
+    en:{default:"Cali is Colombia's sports capital. Pascual Guerrero Stadium for football, Jaime Aparicio Sports Complex for world events, and Sunday ciclovía for cycling. What sport are you interested in? — El Capitán"}
+  },
+  bienestar:{
+    es:{clinica:'Las principales clínicas: Fundación Valle del Lili (sur, referente latinoamericano), Clínica Imbanaco (especializada en turismo médico) y Clínica Los Farallones. Todas con atención internacional. — Sofía',default:'Cali ofrece excelente infraestructura de bienestar. Ciudad Jardín y El Peñón son los barrios más tranquilos. Valle del Lili e Imbanaco son referentes para turismo médico. ¿En qué área puedo orientarle? — Sofía'},
+    en:{default:"Cali offers excellent wellness infrastructure. Ciudad Jardín and El Peñón are the quietest neighborhoods. Valle del Lili and Imbanaco clinics are Latin American references for medical tourism. How can I help? — Sofía"}
+  }
+};
+
+let ST={nombre:'',pais:'',idioma:'es',perfil:'rumbera',acc:'ninguna',step:0};
+let map,allM=[],convH=[];
+
+setTimeout(()=>{
+  document.getElementById('screen-loading').classList.remove('active');
+  document.getElementById('screen-onboarding').classList.add('active');
+},2200);
+
+function goStep1(){
+  ST.nombre=document.getElementById('inp-nombre').value.trim();
+  ST.pais=document.getElementById('inp-pais').value.trim();
+  if(!ST.nombre){document.getElementById('inp-nombre').focus();return;}
+  const pl=ST.pais.toLowerCase();
+  if(pl.includes('usa')||pl.includes('united')||pl.includes('australia')||pl.includes('canada')||pl.includes('uk')||pl.includes('england')) setLang('en');
+  nextStep(1);
+}
+
+function nextStep(n){
+  document.getElementById('step-'+ST.step).classList.remove('active');
+  document.getElementById('dot-'+ST.step).classList.remove('active');
+  ST.step=n;
+  document.getElementById('step-'+n).classList.add('active');
+  document.getElementById('dot-'+n).classList.add('active');
+  applyLang();
+}
+
+function setLang(l){
+  ST.idioma=l;
+  document.getElementById('lang-es').classList.toggle('active',l==='es');
+  document.getElementById('lang-en').classList.toggle('active',l==='en');
+  applyLang();
+}
+
+function applyLang(){
+  const e=ST.idioma==='es';
+  const t=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  t('s1-title',e?'¿En qué idioma preferís?':'Which language do you prefer?');
+  t('s1-sub',e?'CalimIA puede hablarte en español o inglés.':'CalimIA can speak Spanish or English.');
+  t('s2-title',e?'¿Qué Cali querés vivir?':'What side of Cali do you want?');
+  t('s2-sub',e?'Elige tu experiencia principal.':'Choose your main experience.');
+  t('s3-title',e?'¿Alguna preferencia de accesibilidad?':'Any accessibility preference?');
+  t('s3-sub',e?'CalimIA se adapta para que todos vivan Cali.':'CalimIA adapts so everyone can experience Cali.');
+  t('p1n',e?'Cali Rumbera':'Salsa Cali'); t('p1d',e?'Salsa, eventos, vida nocturna':'Salsa, events, nightlife');
+  t('p2n',e?'Cali Histórica':'Historic Cali'); t('p2d',e?'Patrimonio, arte, arquitectura':'Heritage, art, architecture');
+  t('p3n',e?'Cali Biodiversa':'Nature Cali'); t('p3d',e?'Naturaleza, aves, ríos':'Nature, birds, rivers');
+  t('p4n',e?'Cali Gastronómica':'Foodie Cali'); t('p4d',e?'Sabores, mercados, tradición':'Flavors, markets, tradition');
+  t('p5n',e?'Cali Deportiva':'Sports Cali'); t('p5d',e?'Estadios, atletismo, eventos':'Stadiums, athletics, events');
+  t('p6n',e?'Cali Bienestar':'Wellness Cali'); t('p6d',e?'Salud, descanso, recuperación':'Health, rest, recovery');
+  t('a1n',e?'Sin limitación':'No limitation'); t('a2n',e?'Baja visión':'Low vision'); t('a3n',e?'Sordo':'Deaf');
+  t('btn-launch',e?'¡Empezar a explorar! 🗺️':'Start exploring! 🗺️');
+  t('tml',e?'Mapa':'Map'); t('tcl','Chat'); t('tel',e?'Explorar':'Explore');
+  const ci=document.getElementById('chat-input');
+  if(ci) ci.placeholder=e?'Pregúntale a tu guía...':'Ask your guide...';
+}
+
+function setPerfil(pf,el){
+  ST.perfil=pf;
+  document.querySelectorAll('.perfil-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('btn-2').disabled=false;
+}
+
+function setAcc(a,el){
+  ST.acc=a;
+  document.querySelectorAll('.acc-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function launchApp(){
+  if(ST.acc==='baja-vision') document.body.classList.add('low-vision');
+  document.getElementById('screen-onboarding').classList.remove('active');
+  document.getElementById('screen-app').classList.add('active');
+  setupNarrador();
+  initMap();
+  buildExplore();
+  setTimeout(()=>initChat(),300);
+}
+
+function setupNarrador(){
+  const n=NR[ST.perfil], e=ST.idioma==='es';
+  document.getElementById('hdr-avatar').textContent=n.e;
+  document.getElementById('hdr-name').textContent=n.n;
+  document.getElementById('chat-avatar').textContent=n.e;
+  document.getElementById('cnn').textContent=n.n;
+  document.getElementById('cnr').textContent=e?n.re:n.en;
+  const bv=BV[ST.perfil][e?'es':'en'].replace('{N}',ST.nombre||(e?'viajero':'traveler'));
+  document.getElementById('cng').textContent=bv;
+  const qs=QQ[ST.perfil][e?'es':'en'];
+  document.getElementById('quick-questions').innerHTML=qs.map(q=>`<button class="quick-q" onclick="sendQuick('${q.replace(/'/g,"\\'")}')"> ${q}</button>`).join('');
+}
+
+const PC={rumbera:'#C1392B',historica:'#D97706',biodiversa:'#059669',gastronomica:'#EA580C',deportiva:'#2563EB',bienestar:'#7C3AED'};
+const PI={rumbera:'💃',historica:'🏛️',biodiversa:'🌿',gastronomica:'🍽️',deportiva:'⚽',bienestar:'🏥'};
+
+function initMap(){
+  if(!window._leafletReady){ window._pendingMapInit=initMap; return; }
+  map=L.map('map').setView([3.4516,-76.5320],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
+  AT.forEach(a=>{
+    if(!a.lat||!a.lon)return;
+    const ic=L.divIcon({html:`<div style="background:${PC[a.p]};width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.3)">${PI[a.p]||'📍'}</div>`,iconSize:[32,32],iconAnchor:[16,16],className:''});
+    const m=L.marker([a.lat,a.lon],{icon:ic}).addTo(map);
+    m.on('click',()=>openModal(a));
+    m._p=a.p; allM.push(m);
+  });
+  filterMap(ST.perfil,document.getElementById('chip-'+ST.perfil));
+}
+
+function filterMap(pf,btn){
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  const vis=[];
+  allM.forEach(m=>{
+    const show=pf==='all'||m._p===pf;
+    if(show){if(!map.hasLayer(m))map.addLayer(m);vis.push(m);}
+    else{if(map.hasLayer(m))map.removeLayer(m);}
+  });
+  if(vis.length&&pf!=='all'){
+    const b=L.latLngBounds(vis.map(m=>m.getLatLng()));
+    map.fitBounds(b,{padding:[40,40],maxZoom:14});
+  }
+}
+
+function buildExplore(){
+  const panel=document.getElementById('panel-explore');
+  const sorted=[...AT].sort((a,b)=>a.p===ST.perfil?-1:b.p===ST.perfil?1:0);
+  const es=ST.idioma==='es';
+  panel.innerHTML=sorted.map(a=>`<div class="explore-card" onclick='openModal(${JSON.stringify(a).replace(/'/g,"&#39;")})'>
+    <div class="explore-card-header"><div class="explore-card-name">${es?a.nombre:(a.name||a.nombre)}</div><span class="explore-card-badge p-${a.p}">${PI[a.p]} ${a.p}</span></div>
+    <div class="explore-card-desc">${(es?a.d:(a.de||a.d)).substring(0,130)}...</div>
+    <div class="explore-card-meta"><span class="meta-tag">${a.g}</span>${a.sig?`<span class="meta-tag">⭐ ${a.sig}</span>`:''}</div>
+  </div>`).join('');
+}
+
+function getNar(a){
+  const e=ST.idioma==='es';
+  const title=e?a.nombre:(a.name||a.nombre);
+  const L={
+    rumbera:   {es:`¡${title} tiene mucho sabor! Es parte de lo que hace a Cali la capital mundial de la salsa.`,en:`${title} is pure Cali soul — this is what makes this city the world capital of salsa.`},
+    historica:  {es:`${title} guarda siglos de historia caleña. Cada detalle aquí tiene una historia que contar.`,en:`${title} holds centuries of Cali history. Every detail here has a story to tell.`},
+    biodiversa: {es:`En ${title} la naturaleza habla. Aquí puedes sentir el aire fresco de los Farallones y escuchar el río.`,en:`In ${title}, nature speaks. Feel the fresh air from the Farallones and listen to the river.`},
+    gastronomica:{es:`${title} es donde el sabor vallecaucano cobra vida. Aquí la tradición se come y se celebra.`,en:`${title} is where Valle del Cauca flavors come alive. Tradition is eaten and celebrated here.`},
+    deportiva:  {es:`${title} ha sido testigo de los grandes momentos del deporte caleño.`,en:`${title} has witnessed Cali's greatest sporting moments.`},
+    bienestar:  {es:`${title} es un espacio pensado para el bienestar y la tranquilidad.`,en:`${title} is a space designed for wellness and peace of mind.`}
+  };
+  return(L[a.p]||{es:a.d.substring(0,100),en:a.d.substring(0,100)})[e?'es':'en'];
+}
+
+function openModal(a){
+  const n=NR[a.p], nt=getNar(a), e=ST.idioma==='es';
+  const title = e ? a.nombre : (a.name || a.nombre);
+  const desc  = e ? a.d      : (a.de   || a.d);
+  const sl=e?'🔊 Escuchar descripción':'🔊 Listen to description';
+  const al=e?`Preguntarle a ${n.n} sobre este lugar 💬`:`Ask ${n.n} about this place 💬`;
+  const safeSpeak=(title+'. '+desc).replace(/'/g,"\\'");
+  const safeAsk=title.replace(/'/g,"\\'");
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-title">${title}</div>
+    <div class="modal-group">${a.g}</div>
+    <div class="modal-narrador"><span style="font-size:1.8rem;flex-shrink:0">${n.e}</span><div class="modal-narrador-text">"${nt}"</div></div>
+    <div class="modal-desc">${desc}</div>
+    ${a.dir?`<div style="font-size:13px;color:#666;margin-bottom:12px">📍 ${a.dir}</div>`:''}
+    <button class="modal-speak-btn" onclick="speak('${safeSpeak}')">${sl}</button>
+    <button class="modal-ask-btn" onclick="askAbout('${safeAsk}')">${al}</button>`;
+  document.getElementById('modal-overlay').classList.add('open');
+  if(ST.acc==='baja-vision') setTimeout(()=>speak(title+'. '+desc),400);
+}
+
+function speak(text){
+  if(!('speechSynthesis' in window)){alert('Tu navegador no soporta lectura de voz. Usa Chrome.');return;}
+  window.speechSynthesis.cancel();
+  function doSpeak(){
+    const u=new SpeechSynthesisUtterance(text);
+    const esMode=ST.idioma==='es';
+    u.rate=0.88; u.pitch=1;
+    const vs=window.speechSynthesis.getVoices();
+    let pv=null;
+    if(esMode){
+      pv=vs.find(v=>v.lang==='es-CO')
+        ||vs.find(v=>v.lang==='es-MX')
+        ||vs.find(v=>v.lang==='es-419')
+        ||vs.find(v=>v.lang==='es-ES')
+        ||vs.find(v=>v.lang.startsWith('es'));
+    } else {
+      pv=vs.find(v=>v.lang==='en-US')||vs.find(v=>v.lang.startsWith('en'));
+    }
+    if(pv){u.voice=pv;u.lang=pv.lang;}
+    else{u.lang=esMode?'es-CO':'en-US';}
+    window.speechSynthesis.speak(u);
+  }
+  const vs=window.speechSynthesis.getVoices();
+  if(vs.length>0){doSpeak();}
+  else{window.speechSynthesis.onvoiceschanged=function(){window.speechSynthesis.onvoiceschanged=null;doSpeak();};}
+}
+
+function closeModal(e){
+  if(e.target===document.getElementById('modal-overlay')){
+    window.speechSynthesis&&window.speechSynthesis.cancel();
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+
+function askAbout(n){
+  document.getElementById('modal-overlay').classList.remove('open');
+  showTab('chat');
+  const e=ST.idioma==='es';
+  setTimeout(()=>{document.getElementById('chat-input').value=e?`Cuéntame más sobre ${n}`:`Tell me more about ${n}`;sendMessage();},300);
+}
+
+function initChat(){
+  convH=[];
+  const e=ST.idioma==='es';
+  const bv=BV[ST.perfil][e?'es':'en'].replace('{N}',ST.nombre||(e?'viajero':'traveler'));
+  addMsg('bot',bv);
+}
+
+function addMsg(role,text){
+  const msgs=document.getElementById('chat-messages');
+  const now=new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+  const d=document.createElement('div'); d.className=`msg ${role}`;
+  const sp=role==='bot'?`<button class="msg-speak" onclick="speak('${text.replace(/'/g,"\\'").replace(/"/g,"&quot;")}')">🔊</button>`:'';
+  d.innerHTML=`<div class="msg-bubble">${text}${sp}</div><div class="msg-time">${now}</div>`;
+  msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
+  if(role==='bot'&&ST.acc==='baja-vision') speak(text);
+}
+
+function sendQuick(q){document.getElementById('chat-input').value=q;sendMessage();}
+
+async function sendMessage(){
+  const inp=document.getElementById('chat-input');
+  const text=inp.value.trim(); if(!text)return;
+  inp.value=''; addMsg('user',text);
+  const ty=document.getElementById('chat-typing'); ty.style.display='flex';
+  document.getElementById('chat-messages').scrollTop=99999;
+  convH.push({role:'user',content:text});
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,system:buildSP(),messages:convH})});
+    if(!res.ok)throw new Error('err');
+    const data=await res.json();
+    const reply=data.content?.[0]?.text||getFB(text);
+    convH.push({role:'assistant',content:reply});
+    ty.style.display='none'; addMsg('bot',reply);
+  }catch(err){ty.style.display='none';addMsg('bot',getFB(text));}
+}
+
+function buildSP(){
+  const n=NR[ST.perfil], e=ST.idioma==='es';
+  const pl=ST.pais.toLowerCase();
+  const isCali=pl.includes('cali'), isCol=pl.includes('colombia');
+  const j=isCali?'alta':isCol?'media':'baja';
+  const ats=AT.filter(a=>a.p===ST.perfil).map(a=>`- ${a.nombre}: ${a.d.substring(0,100)}`).join('\n');
+  const todos=AT.map(a=>a.nombre).join(', ');
+  return `Eres ${n.n}, narrador de CalimIA para el perfil "${ST.perfil}". ${e?n.re:n.en}.
+Turista: nombre="${ST.nombre}", país="${ST.pais}", idioma="${ST.idioma}", accesibilidad="${ST.acc}".
+${e?`IDIOMA: Español. Jerga caleña nivel ${j} (${j==='alta'?'usa oís,llave,bacano,parce':j==='media'?'una expresión caleña ocasional con explicación en paréntesis':'sin jerga, español neutro latinoamericano'}).`
+   :`LANGUAGE: ALWAYS respond in English only. Never use Spanish. You can include one caleño word with its English translation occasionally.`}
+${ST.acc==='baja-vision'?'ACCESIBILIDAD: Baja visión. Describe con detalle sensorial: sonidos, texturas, olores, temperatura, distancias.':''}
+${ST.acc==='sordo'?'ACCESIBILIDAD: Sordo. Texto claro con emojis visuales. Sin referencias a audio o música.':''}
+TUS ATRACTIVOS (${ST.perfil}):
+${ats}
+TAMBIÉN CONOCES: ${todos}
+REGLAS: Máximo 3 párrafos. Ofrece siempre una acción siguiente. No inventes horarios ni precios. Sé cálido y local.`;
+}
+
+function getFB(q){
+  const e=ST.idioma==='es', ql=q.toLowerCase();
+  const fb=FB[ST.perfil]; if(!fb)return e?'Lo siento, intenta de nuevo.':'Sorry, try again.';
+  const lf=fb[e?'es':'en']||fb['es']||{};
+  if(ql.includes('salsa')||ql.includes('bail')) return lf.salsa||lf.default||'';
+  if(ql.includes('feria'))return lf.feria||lf.default||'';
+  if(ql.includes('petronio'))return lf.petronio||lf.default||'';
+  if(ql.includes('ermita')||ql.includes('iglesia'))return lf.ermita||lf.default||'';
+  if(ql.includes('centro')||ql.includes('historic'))return lf.centro||lf.default||'';
+  if(ql.includes('pance')||ql.includes('río pance'))return e?(fb['es']?.pance||lf.default||''):(fb['en']?.pance||fb['en']?.default||'');
+  if(ql.includes('ave')||ql.includes('bird')||ql.includes('pájaro'))return e?(fb['es']?.aves||lf.default||''):(fb['en']?.birds||fb['en']?.default||'');
+  if(ql.includes('río')||ql.includes('rio')||ql.includes('river'))return lf.rios||lf.default||'';
+  if(ql.includes('lulada')||ql.includes('lulo'))return lf.lulada||lf.default||'';
+  if(ql.includes('pandebono'))return lf.pandebono||lf.default||'';
+  if(ql.includes('alameda')||ql.includes('mercado'))return lf.alameda||lf.default||'';
+  if(ql.includes('estadio')||ql.includes('pascual'))return lf.estadio||lf.default||'';
+  if(ql.includes('clínica')||ql.includes('hospital'))return lf.clinica||lf.default||'';
+  return lf.default||(e?'Lo siento, no tengo esa información ahora. ¿Puedo ayudarte con algo más sobre Cali?':"Sorry, I don't have that info right now. Can I help you with something else about Cali?");
+}
+
+function showTab(tab){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.app-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='mapa')setTimeout(()=>map&&map.invalidateSize(),100);
+}
+</script>
+</body>
+</html>
